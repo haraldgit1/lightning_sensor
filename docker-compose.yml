@@ -1,0 +1,399 @@
+services:
+  postgres:
+    restart: unless-stopped
+    container_name: regtest_db
+    image: postgres:17.0-alpine3.20
+    volumes:
+      - postgres-data:/postgresql_data
+      - ./data/pg/init:/docker-entrypoint-initdb.d/
+    environment:
+      POSTGRES_ADDITIONAL_DATABASES: regtest_lnd_tier0_geodata,regtest_lnd_tier1_project_owner,regtest_lnd_tier1_company,regtest_lnd_tier1_supervision,regtest_lnd_tier2_geodata,regtest_cln0_monitor
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      PGDATA: /postgresql_data
+    ports:
+      - "5889:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready --username=$$POSTGRES_USER", "--dbname=regtest_cln0_monitor" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  bitcoind:
+    container_name: regtest_bitcoind
+    image: polarlightning/bitcoind:27.0
+    restart: unless-stopped
+    volumes:
+      - bitcoind-data:/home/bitcoin/.bitcoin/regtest
+    command:
+      -regtest=1
+      -server=1
+      -whitelist=0.0.0.0/0
+      -txindex=1
+      -debug=0
+      -dns=0
+      -dnsseed=0
+      -networkactive=0
+      -uacomment=tbkdevbitcoindregtest
+      -printtoconsole=1
+      -printpriority=1
+      -logtimemicros=1
+      -rpcauth=regtest:169f6ba28badca1d912ac0defebc8ceb$$2550c68dfde8ca3b4892415fa8779b6ea656a44e7af1642332afa06c1979e014
+      -rpcbind=0.0.0.0
+      -rpcallowip=0.0.0.0/0
+      -zmqpubrawblock=tcp://0.0.0.0:28332
+      -zmqpubrawtx=tcp://0.0.0.0:28333
+      -zmqpubhashblock=tcp://0.0.0.0:28334
+      -zmqpubhashtx=tcp://0.0.0.0:28335
+      -fallbackfee=0.00000253
+    expose:
+      - "18443"
+      - "28332"
+      - "28333"
+      - "28334"
+      - "28335"
+    ports:
+      - "18443:18443"
+      - "28332:28332"
+      - "28333:28333"
+      - "28334:28334"
+      - "28335:28335"
+    healthcheck:
+      test: [ "CMD", "/entrypoint.sh", "bitcoin-cli", "-chain=regtest", "-getinfo" ]
+      interval: 10s
+      retries: 5
+
+  cln0_monitor:
+    container_name: regtest_cln0_monitor
+    image: polarlightning/clightning:24.11.1@sha256:36bdb7d1826b23264863905a85ae93e24548a4db6979420a1cac69e905f4a316
+    restart: unless-stopped
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      LIGHTNINGD_POSTGRES_NO_VACUUM: 1
+    command:
+      - '--alias=cln0_monitor'
+      - '--addr=0.0.0.0:19846'
+      - '--wallet=postgres://regtest_cln0_monitor:regtest_cln0_monitor@regtest_db:5432/regtest_cln0_monitor'
+      - '--bitcoin-rpcconnect=regtest_bitcoind'
+      - '--bitcoin-rpcport=18443'
+      - '--bitcoin-rpcuser=regtest'
+      - '--bitcoin-rpcpassword=regtest'
+      - '--grpc-host=0.0.0.0'
+      - '--grpc-port=19935'
+      - '--clnrest-host=0.0.0.0'
+      - '--clnrest-port=3010'
+      - '--clnrest-swagger-root=/swagger-ui'
+      - '--network=regtest'
+      - '--log-level=debug'
+      - '--log-file=/home/clightning/.lightning/regtest/debug.log' # write log file for inspection
+      - '--log-file=-' # means to log to stdout also!
+      - '--funding-confirms=1'
+      - '--database-upgrade=true' # required if a non-release version wants to (irrevocably!) upgrade the db
+      - '--allow-deprecated-apis=false'
+      - '--disable-dns'
+      # see all dev options: https://github.com/ElementsProject/lightning/blob/v24.08.1/lightningd/options.c#L812
+      - '--dev-fast-gossip'
+      - '--dev-fast-reconnect'
+      - '--dev-bitcoind-poll=1'
+      - '--dev-allow-localhost' # Announce and allow announcements for localhost address
+      - '--developer'
+    volumes:
+      # mount all certs/keys individually (to avoid creating files on the host system by the container)
+      - ./data/cln0_app/regtest/hsm_secret:/home/clightning/.lightning/regtest/hsm_secret:ro
+      - ./data/cln0_app/regtest/ca.pem:/home/clightning/.lightning/regtest/ca.pem
+      - ./data/cln0_app/regtest/ca-key.pem:/home/clightning/.lightning/regtest/ca-key.pem
+      - ./data/cln0_app/regtest/client.pem:/home/clightning/.lightning/regtest/client.pem
+      - ./data/cln0_app/regtest/client-key.pem:/home/clightning/.lightning/regtest/client-key.pem
+      - ./data/cln0_app/regtest/server.pem:/home/clightning/.lightning/regtest/server.pem
+      - ./data/cln0_app/regtest/server-key.pem:/home/clightning/.lightning/regtest/server-key.pem
+    ports:
+      - "19935:19846"
+      - "13010:3010"
+    healthcheck:
+      test: [ "CMD", "/entrypoint.sh", "lightning-cli", "--network=regtest", "getinfo" ]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+      start_interval: 3s
+
+  lnd_tier0_geodata:
+    container_name: regtest_lnd_tier0_geodata
+    image: polarlightning/lnd:0.18.5-beta@sha256:9afcfd14b2eef3461cf89dbe77e4ec61f55df09cce23d16006fabf8f9eb69c55
+    restart: unless-stopped
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command:
+      - '--alias=lnd_tier0_geodata'
+      - '--bitcoin.regtest'
+      - '--bitcoin.node=bitcoind'
+      - '--bitcoin.defaultchanconfs=1'
+      - '--bitcoind.rpchost=regtest_bitcoind:18443'
+      - '--bitcoind.zmqpubrawblock=tcp://regtest_bitcoind:28332'
+      - '--bitcoind.zmqpubrawtx=tcp://regtest_bitcoind:28333'
+      - '--bitcoind.rpcuser=regtest'
+      - '--bitcoind.rpcpass=regtest'
+      - '--db.backend=postgres'
+      - '--db.postgres.dsn=postgresql://regtest_lnd_tier0_geodata:regtest_lnd_tier0_geodata@regtest_db:5432/regtest_lnd_tier0_geodata'
+      - '--db.postgres.timeout=0'
+      - '--noseedbackup'
+      - '--listen=0.0.0.0:9735'
+      - '--externalip=regtest_lnd_tier0_geodata:9735'
+      - '--restlisten=regtest_lnd_tier0_geodata:8080'
+      - '--rpclisten=regtest_lnd_tier0_geodata:10009'
+      - '--rpclisten=localhost:10009' # needed for healthcheck
+      - '--tlscertduration=876000h'
+      #- '--debuglevel=info'
+      - '--debuglevel=debug'
+      - '--maxpendingchannels=21'
+      - '--trickledelay=1000'
+      # Skip setting up macaroons for now, as it does not work properly and ends up with exception
+      # `io.grpc.StatusRuntimeException: UNKNOWN: verification failed: signature mismatch after caveat verification`
+      - '--no-macaroons'
+    volumes:
+      # mount all certs/keys individually (to avoid creating files on the host system by the container)
+      - ./data/lnd_common/tls.cert:/home/lnd/.lnd/tls.cert
+      - ./data/lnd_common/tls.key:/home/lnd/.lnd/tls.key
+    ports:
+      - "10741:9735"
+      - "10841:8080"
+      - "10941:10009"
+    healthcheck:
+      test: [ "CMD", "/entrypoint.sh", "lncli", "--network=regtest", "--no-macaroons", "getinfo" ]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+      start_interval: 3s
+
+  lnd_tier1_project_owner:
+    container_name: regtest_lnd_tier1_project_owner
+    image: polarlightning/lnd:0.18.5-beta@sha256:9afcfd14b2eef3461cf89dbe77e4ec61f55df09cce23d16006fabf8f9eb69c55
+    restart: unless-stopped
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      lnd_tier0_geodata:
+        condition: service_healthy
+    command:
+      - '--alias=lnd_tier1_project_owner'
+      - '--bitcoin.regtest'
+      - '--bitcoin.node=bitcoind'
+      - '--bitcoin.defaultchanconfs=1'
+      - '--bitcoind.rpchost=regtest_bitcoind:18443'
+      - '--bitcoind.zmqpubrawblock=tcp://regtest_bitcoind:28332'
+      - '--bitcoind.zmqpubrawtx=tcp://regtest_bitcoind:28333'
+      - '--bitcoind.rpcuser=regtest'
+      - '--bitcoind.rpcpass=regtest'
+      - '--db.backend=postgres'
+      - '--db.postgres.dsn=postgresql://regtest_lnd_tier1_project_owner:regtest_lnd_tier1_project_owner@regtest_db:5432/regtest_lnd_tier1_project_owner'
+      - '--db.postgres.timeout=0'
+      - '--noseedbackup'
+      - '--listen=0.0.0.0:9735'
+      - '--externalip=regtest_lnd_tier1_project_owner:9735'
+      - '--restlisten=regtest_lnd_tier1_project_owner:8080'
+      - '--rpclisten=regtest_lnd_tier1_project_owner:10009'
+      - '--rpclisten=localhost:10009' # needed for healthcheck
+      - '--tlscertduration=876000h'
+      #- '--debuglevel=info'
+      - '--debuglevel=debug'
+      - '--maxpendingchannels=21'
+      - '--trickledelay=1000'
+      # Skip setting up macaroons for now, as it does not work properly and ends up with exception
+      # `io.grpc.StatusRuntimeException: UNKNOWN: verification failed: signature mismatch after caveat verification`
+      - '--no-macaroons'
+    volumes:
+      # mount all certs/keys individually (to avoid creating files on the host system by the container)
+      - ./data/lnd_common/tls.cert:/home/lnd/.lnd/tls.cert
+      - ./data/lnd_common/tls.key:/home/lnd/.lnd/tls.key
+    ports:
+      - "11741:9735"
+      - "11841:8080"
+      - "11941:10009"
+    healthcheck:
+      test: [ "CMD", "/entrypoint.sh", "lncli", "--network=regtest", "--no-macaroons", "getinfo" ]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+      start_interval: 3s
+
+  lnd_tier1_company:
+    container_name: regtest_lnd_tier1_company
+    image: polarlightning/lnd:0.18.5-beta@sha256:9afcfd14b2eef3461cf89dbe77e4ec61f55df09cce23d16006fabf8f9eb69c55
+    restart: unless-stopped
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      lnd_tier0_geodata:
+        condition: service_healthy
+    command:
+      - '--alias=lnd_tier1_company'
+      - '--bitcoin.regtest'
+      - '--bitcoin.node=bitcoind'
+      - '--bitcoin.defaultchanconfs=1'
+      - '--bitcoind.rpchost=regtest_bitcoind:18443'
+      - '--bitcoind.zmqpubrawblock=tcp://regtest_bitcoind:28332'
+      - '--bitcoind.zmqpubrawtx=tcp://regtest_bitcoind:28333'
+      - '--bitcoind.rpcuser=regtest'
+      - '--bitcoind.rpcpass=regtest'
+      - '--db.backend=postgres'
+      - '--db.postgres.dsn=postgresql://regtest_lnd_tier1_company:regtest_lnd_tier1_company@regtest_db:5432/regtest_lnd_tier1_company'
+      - '--db.postgres.timeout=0'
+      - '--noseedbackup'
+      - '--listen=0.0.0.0:9735'
+      - '--externalip=regtest_lnd_tier1_company:9735'
+      - '--restlisten=regtest_lnd_tier1_company:8080'
+      - '--rpclisten=regtest_lnd_tier1_company:10009'
+      - '--rpclisten=localhost:10009' # needed for healthcheck
+      - '--tlscertduration=876000h'
+      #- '--debuglevel=info'
+      - '--debuglevel=debug'
+      - '--maxpendingchannels=21'
+      - '--trickledelay=1000'
+      # Skip setting up macaroons for now, as it does not work properly and ends up with exception
+      # `io.grpc.StatusRuntimeException: UNKNOWN: verification failed: signature mismatch after caveat verification`
+      - '--no-macaroons'
+    volumes:
+      # mount all certs/keys individually (to avoid creating files on the host system by the container)
+      - ./data/lnd_common/tls.cert:/home/lnd/.lnd/tls.cert
+      - ./data/lnd_common/tls.key:/home/lnd/.lnd/tls.key
+    ports:
+      - "12741:9735"
+      - "12841:8080"
+      - "12941:10009"
+    healthcheck:
+      test: [ "CMD", "/entrypoint.sh", "lncli", "--network=regtest", "--no-macaroons", "getinfo" ]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+      start_interval: 3s
+
+  lnd_tier1_supervision:
+    container_name: regtest_lnd_tier1_supervision
+    image: polarlightning/lnd:0.18.5-beta@sha256:9afcfd14b2eef3461cf89dbe77e4ec61f55df09cce23d16006fabf8f9eb69c55
+    restart: unless-stopped
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      lnd_tier0_geodata:
+        condition: service_healthy
+    command:
+      - '--alias=lnd_tier1_supervision'
+      - '--bitcoin.regtest'
+      - '--bitcoin.node=bitcoind'
+      - '--bitcoin.defaultchanconfs=1'
+      - '--bitcoind.rpchost=regtest_bitcoind:18443'
+      - '--bitcoind.zmqpubrawblock=tcp://regtest_bitcoind:28332'
+      - '--bitcoind.zmqpubrawtx=tcp://regtest_bitcoind:28333'
+      - '--bitcoind.rpcuser=regtest'
+      - '--bitcoind.rpcpass=regtest'
+      - '--db.backend=postgres'
+      - '--db.postgres.dsn=postgresql://regtest_lnd_tier1_supervision:regtest_lnd_tier1_supervision@regtest_db:5432/regtest_lnd_tier1_supervision'
+      - '--db.postgres.timeout=0'
+      - '--noseedbackup'
+      - '--listen=0.0.0.0:9735'
+      - '--externalip=regtest_lnd_tier1_supervision:9735'
+      - '--restlisten=regtest_lnd_tier1_supervision:8080'
+      - '--rpclisten=regtest_lnd_tier1_supervision:10009'
+      - '--rpclisten=localhost:10009' # needed for healthcheck
+      - '--tlscertduration=876000h'
+      #- '--debuglevel=info'
+      - '--debuglevel=debug'
+      - '--maxpendingchannels=21'
+      - '--trickledelay=1000'
+      # Skip setting up macaroons for now, as it does not work properly and ends up with exception
+      # `io.grpc.StatusRuntimeException: UNKNOWN: verification failed: signature mismatch after caveat verification`
+      - '--no-macaroons'
+    volumes:
+      # mount all certs/keys individually (to avoid creating files on the host system by the container)
+      - ./data/lnd_common/tls.cert:/home/lnd/.lnd/tls.cert
+      - ./data/lnd_common/tls.key:/home/lnd/.lnd/tls.key
+    ports:
+      - "13741:9735"
+      - "13841:8080"
+      - "13941:10009"
+    healthcheck:
+      test: [ "CMD", "/entrypoint.sh", "lncli", "--network=regtest", "--no-macaroons", "getinfo" ]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+      start_interval: 3s
+
+  lnd_tier2_geodata:
+    container_name: regtest_lnd_tier2_geodata
+    image: polarlightning/lnd:0.18.5-beta@sha256:9afcfd14b2eef3461cf89dbe77e4ec61f55df09cce23d16006fabf8f9eb69c55
+    restart: unless-stopped
+    depends_on:
+      bitcoind:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      lnd_tier1_project_owner:
+        condition: service_healthy
+      lnd_tier1_company:
+        condition: service_healthy
+      lnd_tier1_supervision:
+        condition: service_healthy
+    command:
+      - '--alias=lnd_tier2_geodata'
+      - '--bitcoin.regtest'
+      - '--bitcoin.node=bitcoind'
+      - '--bitcoin.defaultchanconfs=1'
+      - '--bitcoind.rpchost=regtest_bitcoind:18443'
+      - '--bitcoind.zmqpubrawblock=tcp://regtest_bitcoind:28332'
+      - '--bitcoind.zmqpubrawtx=tcp://regtest_bitcoind:28333'
+      - '--bitcoind.rpcuser=regtest'
+      - '--bitcoind.rpcpass=regtest'
+      - '--db.backend=postgres'
+      - '--db.postgres.dsn=postgresql://regtest_lnd_tier2_geodata:regtest_lnd_tier2_geodata@regtest_db:5432/regtest_lnd_tier2_geodata'
+      - '--db.postgres.timeout=0'
+      - '--noseedbackup'
+      - '--listen=0.0.0.0:9735'
+      - '--externalip=regtest_lnd_tier2_geodata:9735'
+      - '--restlisten=regtest_lnd_tier2_geodata:8080'
+      - '--rpclisten=regtest_lnd_tier2_geodata:10009'
+      - '--rpclisten=localhost:10009' # needed for healthcheck
+      - '--tlscertduration=876000h'
+      #- '--debuglevel=info'
+      - '--debuglevel=debug'
+      - '--maxpendingchannels=21'
+      - '--trickledelay=1000'
+      # Skip setting up macaroons for now, as it does not work properly and ends up with exception
+      # `io.grpc.StatusRuntimeException: UNKNOWN: verification failed: signature mismatch after caveat verification`
+      - '--no-macaroons'
+    volumes:
+      # mount all certs/keys individually (to avoid creating files on the host system by the container)
+      - ./data/lnd_common/tls.cert:/home/lnd/.lnd/tls.cert
+      - ./data/lnd_common/tls.key:/home/lnd/.lnd/tls.key
+    ports:
+      - "14741:9735"
+      - "14841:8080"
+      - "14941:10009"
+    healthcheck:
+      test: [ "CMD", "/entrypoint.sh", "lncli", "--network=regtest", "--no-macaroons", "getinfo" ]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+      start_interval: 3s
+
+volumes:
+  bitcoind-data:
+  postgres-data:
