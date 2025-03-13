@@ -179,13 +179,6 @@ lnd3-id:
 lnd4-id:
   @just lnd::id {{lnd4_container_name}}
 
-[private]
-[group("lnd4")]
-lnd4-fundchannel-cln3 amount_sat='4194303' push_sat='2097151':
-  #!/usr/bin/env bash
-  set -euxo pipefail
-  just lnd::openchannel {{lnd4_container_name}} $(just cln3-id) {{amount_sat}} {{push_sat}}
-
 [group("lnd4")]
 lnd4-getinfo:
   @just lnd4-exec getinfo
@@ -214,35 +207,36 @@ setup-connect-peers:
 [private]
 [group("setup")]
 setup-create-channels:
-  @just cln0-fundchannel-cln1
-  @just cln0-fundchannel-cln2
-  @just cln2-fundchannel-cln3
-  @just cln3-fundchannel-cln5
-  @just lnd4-fundchannel-cln3
+  just lnd::openchannel {{lnd1_container_name}} $(just lnd0-id) 4194303 2097151
+  just lnd::openchannel {{lnd1_container_name}} $(just lnd4-id) 4194303 2097151
+  just lnd::openchannel {{lnd2_container_name}} $(just lnd0-id) 4194303 2097151
+  just lnd::openchannel {{lnd2_container_name}} $(just lnd4-id) 4194303 2097151
+  just lnd::openchannel {{lnd3_container_name}} $(just lnd0-id) 4194303 2097151
+  just lnd::openchannel {{lnd3_container_name}} $(just lnd4-id) 4194303 2097151
 
-# Send payments back and forth between lnd0<->lnd1<->lnd4
+# Send payments back and forth between lnd0<->lnd4
 [private]
 [group("health")]
-probe-payment-lnd0-lnd1-lnd4:
+probe-payment-lnd0-lnd4:
   #!/usr/bin/env bash
   set -euxo pipefail
-  # lnd0<->lnd1<->lnd4
-  ## lnd4->lnd-1->lnd0
+  # lnd0<->lnd4
+  ## lnd4->lnd0
   INVOICE0_LABEL=$(printf "healthcheck_%s" "$(uuidgen -t)")
   INVOICE0_BOLT11=$(just lnd::create-invoice {{lnd0_container_name}} 1000 | jq --raw-output .payment_request)
   just lnd::exec {{lnd4_container_name}} sendpayment --force --pay_req="${INVOICE0_BOLT11}"
-  ## lnd0->lnd-1->lnd4
+  ## lnd0->lnd4
   INVOICE1_BOLT11=$(just lnd::create-invoice {{lnd4_container_name}} 1000 | jq --raw-output .payment_request)
-  just lnd::exec {{lnd0_container_name}}sendpayment --force --pay_req="${INVOICE1_BOLT11}"
-  echo "HEALTHCHECK SUCCESS (lnd0<->lnd1<->lnd4)."
+  just lnd::exec {{lnd0_container_name}} sendpayment --force --pay_req="${INVOICE1_BOLT11}"
+  echo "HEALTHCHECK SUCCESS (lnd0<->lnd4)."
 
-# Send payments back and forth between cln0<->cln5 and cln1<->lnd4
+# Send payments back and forth between lnd0<->lnd4
 [group("health")]
 probe-payment:
   #!/usr/bin/env bash
   set -euxo pipefail
   while true; do
-    just probe-payment-lnd0-lnd1-lnd4
+    just probe-payment-lnd0-lnd4
     sleep 3
   done
 
@@ -256,7 +250,7 @@ init-lightning:
   @just bitcoin::mine 100
   @just cln0-waitblockheight 109
   @just setup-connect-peers
-  #@just setup-create-channels
+  @just setup-create-channels
   @just bitcoin::mine 6
   @just cln0-waitblockheight 115
   @just bitcoin::mine 6
