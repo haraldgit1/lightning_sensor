@@ -27,7 +27,5 @@ create-invoice container_name amount_msat='1000':
 [private]
 [group("lnd")]
 connect container_name id host port:
-  #!/usr/bin/env bash
-  set -euxo pipefail
-  just lnd::exec {{container_name}} disconnect {{id}} || :
+  @just lnd::exec {{container_name}} disconnect {{id}} 2> /dev/null 1> /dev/null || :
   just lnd::exec {{container_name}} connect {{id}}@{{host}}:{{port}} --timeout 30s --perm

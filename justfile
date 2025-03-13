@@ -154,7 +154,6 @@ lnd3-exec +command:
 lnd4-exec +command:
   @just lnd::exec {{lnd4_container_name}} {{command}}
 
-
 [private]
 [group("lnd0")]
 lnd0-id:
@@ -205,14 +204,12 @@ setup-fund-wallets:
 [private]
 [group("setup")]
 setup-connect-peers:
-  #!/usr/bin/env bash
-  set -euxo pipefail
-  just lnd::connect {{lnd0_container_name}} $(just lnd1-id) {{lnd1_container_name}} {{lnd1_lightning_port}}
-  just lnd::connect {{lnd0_container_name}} $(just lnd2-id) {{lnd2_container_name}} {{lnd2_lightning_port}}
-  just lnd::connect {{lnd0_container_name}} $(just lnd3-id) {{lnd3_container_name}} {{lnd3_lightning_port}}
-  just lnd::connect {{lnd4_container_name}} $(just lnd1-id) {{lnd1_container_name}} {{lnd1_lightning_port}}
-  just lnd::connect {{lnd4_container_name}} $(just lnd2-id) {{lnd2_container_name}} {{lnd2_lightning_port}}
-  just lnd::connect {{lnd4_container_name}} $(just lnd3-id) {{lnd3_container_name}} {{lnd3_lightning_port}}
+  @just lnd::connect {{lnd0_container_name}} $(just lnd1-id) {{lnd1_container_name}} {{lnd1_lightning_port}}
+  @just lnd::connect {{lnd0_container_name}} $(just lnd2-id) {{lnd2_container_name}} {{lnd2_lightning_port}}
+  @just lnd::connect {{lnd0_container_name}} $(just lnd3-id) {{lnd3_container_name}} {{lnd3_lightning_port}}
+  @just lnd::connect {{lnd4_container_name}} $(just lnd1-id) {{lnd1_container_name}} {{lnd1_lightning_port}}
+  @just lnd::connect {{lnd4_container_name}} $(just lnd2-id) {{lnd2_container_name}} {{lnd2_lightning_port}}
+  @just lnd::connect {{lnd4_container_name}} $(just lnd3-id) {{lnd3_container_name}} {{lnd3_lightning_port}}
 
 [private]
 [group("setup")]
@@ -258,7 +255,7 @@ init-lightning:
   @just setup-fund-wallets # mines 8 blocks; afterwards blockheight := 9
   @just bitcoin::mine 100
   @just cln0-waitblockheight 109
-  #@just setup-connect-peers
+  @just setup-connect-peers
   #@just setup-create-channels
   @just bitcoin::mine 6
   @just cln0-waitblockheight 115
