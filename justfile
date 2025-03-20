@@ -317,10 +317,25 @@ listbalances:
   @just lnd0-id
   @echo "{{BOLD + MAGENTA}}lnd0 balance/channels:{{NORMAL}}"
   @curl --silent --insecure https://localhost:10841/v1/balance/channels \
-      | jq '{balance, pending_open_balance, local_balance, remote_balance}'
+    | jq '{balance, pending_open_balance, local_balance, remote_balance}'
 
   @echo "{{BOLD + CYAN + UNDERLINE}}## lnd4{{NORMAL}}{{BOLD + CYAN}}"
   @just lnd4-id
   @echo "{{BOLD + CYAN}}lnd4 balance/channels:{{NORMAL}}"
   @curl --silent --insecure https://localhost:14841/v1/balance/channels \
     | jq '{balance, pending_open_balance, local_balance, remote_balance}'
+
+# Print channel info
+[group("info")]
+listchannels:
+  @echo "{{BOLD + MAGENTA + UNDERLINE}}## lnd0{{NORMAL}}{{BOLD + MAGENTA}}"
+  @just lnd0-id
+  @echo "{{BOLD + MAGENTA}}lnd0 channels:{{NORMAL}}"
+  @curl --silent --insecure https://localhost:10841/v1/channels \
+    | jq '.channels[] | {remote_pubkey, channel_point, local_balance, remote_balance, total_satoshis_sent, total_satoshis_received, num_updates}'
+
+  @echo "{{BOLD + CYAN + UNDERLINE}}## lnd4{{NORMAL}}{{BOLD + CYAN}}"
+  @just lnd4-id
+  @echo "{{BOLD + CYAN}}lnd4 channels:{{NORMAL}}"
+  @curl --silent --insecure https://localhost:14841/v1/channels \
+    | jq '.channels[] | {remote_pubkey, channel_point, local_balance, remote_balance, total_satoshis_sent, total_satoshis_received, num_updates}'
