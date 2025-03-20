@@ -23,6 +23,72 @@ just probe-keysend # loops indefinitely
 just clean
 ```
 
+#### `getinfo`
+```shell
+just getinfo
+```
+```shell
+## bitcoin
+# bitcoin
+bitcoin container name: regtest_bitcoind
+bitcoin container rpcport: 18443
+Chain: regtest
+Blocks: 132
+Headers: 132
+Verification progress: 100.0000%
+Difficulty: 4.656542373906925e-10
+
+Network: in 0, out 0, total 0
+Version: 270000
+Time offset (s): 0
+Proxies: n/a
+Min tx relay fee rate (BTC/kvB): 0.00001000
+
+Warnings: (none)
+## lnd0
+0210d2d7afe5a33f66d77e391417015e008bed2a2be4243a1f3c09b7d10be20ae8
+lnd0 container name: regtest_lnd_tier0_geodata
+lnd0 rest endpoint: https://localhost:10841
+lnd0 getinfo:
+{
+  "version": "0.18.5-beta commit=v0.18.5-beta",
+  "identity_pubkey": "0210d2d7afe5a33f66d77e391417015e008bed2a2be4243a1f3c09b7d10be20ae8",
+  "alias": "lnd_tier0_geodata",
+  "num_peers": 3,
+  "num_pending_channels": 0,
+  "num_active_channels": 3,
+  "num_inactive_channels": 0,
+  "block_height": 132,
+  "chains": [
+    {
+      "chain": "bitcoin",
+      "network": "regtest"
+    }
+  ]
+}
+## lnd4
+03eaf815593ee59b84e94bb0f9f52e93f7fb48ab088aab2b6b8df8d7ffd92ef0a2
+lnd4 container name: regtest_lnd_tier2_geodata
+lnd4 rest endpoint: https://localhost:14841
+lnd4 getinfo:
+{
+  "version": "0.18.5-beta commit=v0.18.5-beta",
+  "identity_pubkey": "03eaf815593ee59b84e94bb0f9f52e93f7fb48ab088aab2b6b8df8d7ffd92ef0a2",
+  "alias": "lnd_tier2_geodata",
+  "num_peers": 3,
+  "num_pending_channels": 0,
+  "num_active_channels": 3,
+  "num_inactive_channels": 0,
+  "block_height": 132,
+  "chains": [
+    {
+      "chain": "bitcoin",
+      "network": "regtest"
+    }
+  ]
+}
+```
+
 #### Bitcoin
 
 ##### Mining
@@ -44,50 +110,36 @@ just bitcoin mine 1 bcrt1qrnz0thqslhxu86th069r9j6y7ldkgs2tzgf5wx
 
 ## Lightning Network Regtest Setup
 ### Nodes
-#### CLN 0 (app)
-The lightning node controlled by the application.
 
-#### CLN 1 (Alice)
-A user lightning node with a direct channel to the app node.
+#### LND 0 (lnd_tier0_geodata)
+#### LND 1 (lnd_tier1_project_owner)
+#### LND 2 (lnd_tier1_company)
+#### LND 3 (lnd_tier1_supervision)
+#### LND 4 (lnd_tier2_geodata)
 
-#### CLN 2 (Bob)
-A user lightning node with a direct channel to the app node.
-
-#### CLN 3 (Charlie)
-A user lightning node with a direct channel to Bob and a private channel to Erin.
-
-#### CLN 4 (Dave)
-A user lightning node _without_ channels.
-This is node solely exists to test the specific behaviour when no route can be found.
-
-#### CLN 5 (Erin)
-A node with a single incoming private channel from Charlie.
-
-#### LND 6 (Farid)
-A user lightning node with a direct channel to Charlie.
-
+#### CLN 0 (cln0_monitor)
+The lightning node just for monitoring the setup.
 
 ### Channels
 ```mermaid
 flowchart TB
-   app["app (cln0)"]
-   alice["alice (cln1)"]
-   bob["bob (cln2)"]
-   charlie["charlie (cln3)"]
-   dave["dave (cln4)"]
-   erin["erin (cln5)"]
-   farid["farid (lnd6)"]
-   app -->|16_777_215 sat| alice
-   app -->|8_388_607 sat| bob
-   bob -->|4_194_303 sat| charlie
-   farid -->|4_194_303 sat| charlie
-   charlie -. private 2_097_151 sat .-> erin
-   app ~~~ dave
-   alice ~~~ dave
-   bob ~~~ dave
-   charlie ~~~ dave
-   erin ~~~ dave
-   farid ~~~ dave
+   lnd_tier0_geodata["Geodata 0 (lnd0)"]
+   lnd_tier1_project_owner["Project Owner (lnd1)"]
+   lnd_tier1_company["Company (lnd2)"]
+   lnd_tier1_supervision["Supervision (lnd3)"]
+   lnd_tier2_geodata["Geodata 1 (lnd4)"]
+   cln0_monitor["Monitor (cln0)"]
+   lnd_tier0_geodata <-->|4_194_303 sat| lnd_tier1_project_owner
+   lnd_tier0_geodata <-->|4_194_303 sat| lnd_tier1_company
+   lnd_tier0_geodata <-->|4_194_303 sat| lnd_tier1_supervision
+   lnd_tier1_project_owner <-->|4_194_303 sat| lnd_tier2_geodata
+   lnd_tier1_company <-->|4_194_303 sat| lnd_tier2_geodata
+   lnd_tier1_supervision <-->|4_194_303 sat| lnd_tier2_geodata
+   lnd_tier0_geodata ~~~ cln0_monitor
+   lnd_tier1_project_owner ~~~ cln0_monitor
+   lnd_tier1_company ~~~ cln0_monitor
+   lnd_tier1_supervision ~~~ cln0_monitor
+   lnd_tier2_geodata ~~~ cln0_monitor
 ```
 
 
