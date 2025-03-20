@@ -17,7 +17,8 @@ git clone https://github.com/theborakompanioni/lightning-regtest-setup-devel
 ```bash
 just up
 just init
-just probe-payment
+just probe-payment # loops indefinitely
+just probe-keysend # loops indefinitely
 [...]
 just clean
 ```

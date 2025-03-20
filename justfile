@@ -240,6 +240,26 @@ probe-payment:
     sleep 3
   done
 
+# Send keysend payments back and forth between lnd0<->lnd4
+[private]
+[group("health")]
+probe-keysend-lnd0-lnd4:
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  just lnd::exec {{lnd0_container_name}} sendpayment --dest $(just lnd4-id) --amt 1000 --keysend
+  just lnd::exec {{lnd4_container_name}} sendpayment --dest $(just lnd0-id) --amt 1000 --keysend
+  echo "HEALTHCHECK KEYSEND SUCCESS (lnd0<->lnd4)."
+
+# Send keysend payments back and forth between nodes
+[group("health")]
+probe-keysend:
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  while true; do
+    just probe-keysend-lnd0-lnd4
+    sleep 1
+  done
+
 # Initialize lightning; fund wallets, connect peers and create channels
 [private]
 [group("setup")]

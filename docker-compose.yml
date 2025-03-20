@@ -64,6 +64,7 @@ services:
       interval: 10s
       retries: 5
 
+  ### cln has a `waitblockheight` which is quite useful, e.g. in setup scripts
   cln0_monitor:
     container_name: regtest_cln0_monitor
     image: polarlightning/clightning:24.11.1@sha256:36bdb7d1826b23264863905a85ae93e24548a4db6979420a1cac69e905f4a316
@@ -155,6 +156,8 @@ services:
       - '--debuglevel=debug'
       - '--maxpendingchannels=21'
       - '--trickledelay=1000'
+      - '--accept-keysend'
+      - '--accept-amp'
       # Skip setting up macaroons for now, as it does not work properly and ends up with exception
       # `io.grpc.StatusRuntimeException: UNKNOWN: verification failed: signature mismatch after caveat verification`
       - '--no-macaroons'
@@ -209,6 +212,8 @@ services:
       - '--debuglevel=debug'
       - '--maxpendingchannels=21'
       - '--trickledelay=1000'
+      - '--accept-keysend'
+      - '--accept-amp'
       # Skip setting up macaroons for now, as it does not work properly and ends up with exception
       # `io.grpc.StatusRuntimeException: UNKNOWN: verification failed: signature mismatch after caveat verification`
       - '--no-macaroons'
@@ -263,6 +268,8 @@ services:
       - '--debuglevel=debug'
       - '--maxpendingchannels=21'
       - '--trickledelay=1000'
+      - '--accept-keysend'
+      - '--accept-amp'
       # Skip setting up macaroons for now, as it does not work properly and ends up with exception
       # `io.grpc.StatusRuntimeException: UNKNOWN: verification failed: signature mismatch after caveat verification`
       - '--no-macaroons'
@@ -317,6 +324,8 @@ services:
       - '--debuglevel=debug'
       - '--maxpendingchannels=21'
       - '--trickledelay=1000'
+      - '--accept-keysend'
+      - '--accept-amp'
       # Skip setting up macaroons for now, as it does not work properly and ends up with exception
       # `io.grpc.StatusRuntimeException: UNKNOWN: verification failed: signature mismatch after caveat verification`
       - '--no-macaroons'
@@ -375,6 +384,8 @@ services:
       - '--debuglevel=debug'
       - '--maxpendingchannels=21'
       - '--trickledelay=1000'
+      - '--accept-keysend'
+      - '--accept-amp'
       # Skip setting up macaroons for now, as it does not work properly and ends up with exception
       # `io.grpc.StatusRuntimeException: UNKNOWN: verification failed: signature mismatch after caveat verification`
       - '--no-macaroons'
