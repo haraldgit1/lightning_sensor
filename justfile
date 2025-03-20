@@ -242,13 +242,13 @@ probe-payment:
 
 # Send keysend payment from lnd0 to lnd4
 [group("health")]
-probe-keysend-lnd0-lnd4:
-  just lnd::exec {{lnd0_container_name}} sendpayment --dest $(just lnd4-id) --amt 1 --keysend
+probe-keysend-lnd0-lnd4 amount='1':
+  just lnd::exec {{lnd0_container_name}} sendpayment --dest $(just lnd4-id) --amt {{amount}} --keysend
 
 # Send keysend payment from lnd4 to lnd0
 [group("health")]
-probe-keysend-lnd4-lnd0:
-  just lnd::exec {{lnd4_container_name}} sendpayment --dest $(just lnd0-id) --amt 1 --keysend
+probe-keysend-lnd4-lnd0 amount='1':
+  just lnd::exec {{lnd4_container_name}} sendpayment --dest $(just lnd0-id) --amt {{amount}} --keysend
 
 # Send keysend payments back and forth between lnd0<->lnd4
 [group("health")]
@@ -256,8 +256,8 @@ probe-keysend:
   #!/usr/bin/env bash
   set -euxo pipefail
   while true; do
-    just probe-keysend-lnd0-lnd4
-    just probe-keysend-lnd4-lnd0
+    just probe-keysend-lnd0-lnd4 1
+    just probe-keysend-lnd4-lnd0 1
     echo "HEALTHCHECK KEYSEND SUCCESS (lnd0<->lnd4)."
     sleep 1
   done
