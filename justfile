@@ -240,23 +240,25 @@ probe-payment:
     sleep 3
   done
 
-# Send keysend payments back and forth between lnd0<->lnd4
-[private]
+# Send keysend payment from lnd0 to lnd4
 [group("health")]
 probe-keysend-lnd0-lnd4:
-  #!/usr/bin/env bash
-  set -euxo pipefail
-  just lnd::exec {{lnd0_container_name}} sendpayment --dest $(just lnd4-id) --amt 1000 --keysend
-  just lnd::exec {{lnd4_container_name}} sendpayment --dest $(just lnd0-id) --amt 1000 --keysend
-  echo "HEALTHCHECK KEYSEND SUCCESS (lnd0<->lnd4)."
+  just lnd::exec {{lnd0_container_name}} sendpayment --dest $(just lnd4-id) --amt 1 --keysend
 
-# Send keysend payments back and forth between nodes
+# Send keysend payment from lnd4 to lnd0
+[group("health")]
+probe-keysend-lnd4-lnd0:
+  just lnd::exec {{lnd4_container_name}} sendpayment --dest $(just lnd0-id) --amt 1 --keysend
+
+# Send keysend payments back and forth between lnd0<->lnd4
 [group("health")]
 probe-keysend:
   #!/usr/bin/env bash
   set -euxo pipefail
   while true; do
     just probe-keysend-lnd0-lnd4
+    just probe-keysend-lnd4-lnd0
+    echo "HEALTHCHECK KEYSEND SUCCESS (lnd0<->lnd4)."
     sleep 1
   done
 
@@ -280,12 +282,12 @@ init-lightning:
   @just bitcoin::mine 1
   @just cln0-waitblockheight 132
 
-# Initialize setup; setup lightning infra and ebill data
+# Initialize setup; init wallets and channels
 [group("setup")]
 init: check-deps
   @just init-lightning
 
-# Initialize setup; setup lightning infra and ebill data
+# Print setup info
 [group("info")]
 info:
   @echo "{{BOLD + BLACK + BG_WHITE + UNDERLINE}}# lightning-regtest-setup-devel{{NORMAL}}"
@@ -307,3 +309,18 @@ info:
   @echo "{{BOLD + CYAN}}lnd4 getinfo:{{NORMAL}}"
   @curl --silent --insecure https://localhost:14841/v1/getinfo \
     | jq '{version, identity_pubkey, alias, num_peers, num_pending_channels, num_active_channels, num_inactive_channels, block_height, chains}'
+
+# Print balance info
+[group("info")]
+listbalances:
+  @echo "{{BOLD + MAGENTA + UNDERLINE}}## lnd0{{NORMAL}}{{BOLD + MAGENTA}}"
+  @just lnd0-id
+  @echo "{{BOLD + MAGENTA}}lnd0 balance/channels:{{NORMAL}}"
+  @curl --silent --insecure https://localhost:10841/v1/balance/channels \
+      | jq '{balance, pending_open_balance, local_balance, remote_balance}'
+
+  @echo "{{BOLD + CYAN + UNDERLINE}}## lnd4{{NORMAL}}{{BOLD + CYAN}}"
+  @just lnd4-id
+  @echo "{{BOLD + CYAN}}lnd4 balance/channels:{{NORMAL}}"
+  @curl --silent --insecure https://localhost:14841/v1/balance/channels \
+    | jq '{balance, pending_open_balance, local_balance, remote_balance}'

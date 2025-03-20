@@ -89,6 +89,44 @@ lnd4 getinfo:
 }
 ```
 
+#### `listbalances`
+```shell
+just listbalances
+```
+```shell
+## lnd0
+0251cea2f33486dd2f8dcd8c2b27b6d6e843ee8ba5b55960c15ee200dfc22b583d
+lnd0 balance/channels:
+{
+  "balance": "6291453",
+  "pending_open_balance": "0",
+  "local_balance": {
+    "sat": "6291453",
+    "msat": "6291453000"
+  },
+  "remote_balance": {
+    "sat": "6281046",
+    "msat": "6281046000"
+  }
+}
+## lnd4
+02eedb781093e5acd0148eb29220ff460f1126376054fad69a11147d3eb0f10811
+lnd4 balance/channels:
+{
+  "balance": "6291453",
+  "pending_open_balance": "0",
+  "local_balance": {
+    "sat": "6291453",
+    "msat": "6291453000"
+  },
+  "remote_balance": {
+    "sat": "6281046",
+    "msat": "6281046000"
+  }
+}
+```
+
+
 #### Bitcoin
 
 ##### Mining
@@ -144,5 +182,5 @@ flowchart TB
 
 
 ## Resources
-- Node Personas: https://en.wikipedia.org/wiki/Alice_and_Bob#Cast_of_characters
+- LND API docs: https://lightning.engineering/api-docs/api/lnd/
 - Mermaid Flowchart: https://mermaid.js.org/syntax/flowchart.html
