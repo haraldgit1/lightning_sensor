@@ -1,0 +1,97 @@
+{
+  "port": "3000",
+  "defaultNodeIndex": 1,
+  "SSO": {
+    "rtlSSO": 0,
+    "rtlCookiePath": "",
+    "logoutRedirectLink": ""
+  },
+  "nodes": [
+    {
+      "index": 1,
+      "lnNode": "Geodata (Tier 0)",
+      "lnImplementation": "LND",
+      "authentication": {
+        "macaroonPath": "/RTL/macaroons"
+      },
+      "settings": {
+        "userPersona": "OPERATOR",
+        "themeMode": "DAY",
+        "themeColor": "PURPLE",
+        "channelBackupPath": "/RTL/lnd0-channel-backup",
+        "logLevel": "INFO",
+        "lnServerUrl": "https://regtest_lnd_tier0_geodata:8080",
+        "fiatConversion": false
+      }
+    },
+    {
+      "index": 2,
+      "lnNode": "Company (Tier 1)",
+      "lnImplementation": "LND",
+      "authentication": {
+        "macaroonPath": "/RTL/macaroons"
+      },
+      "settings": {
+        "userPersona": "OPERATOR",
+        "themeMode": "DAY",
+        "themeColor": "TEAL",
+        "channelBackupPath": "/RTL/lnd1-channel-backup",
+        "logLevel": "INFO",
+        "lnServerUrl": "https://regtest_lnd_tier1_company:8080",
+        "fiatConversion": false
+      }
+    },
+    {
+      "index": 3,
+      "lnNode": "Project Owner (Tier 1)",
+      "lnImplementation": "LND",
+      "authentication": {
+        "macaroonPath": "/RTL/macaroons"
+      },
+      "settings": {
+        "userPersona": "OPERATOR",
+        "themeMode": "DAY",
+        "themeColor": "INDIGO",
+        "channelBackupPath": "/RTL/lnd2-channel-backup",
+        "logLevel": "INFO",
+        "lnServerUrl": "https://regtest_lnd_tier1_project_owner:8080",
+        "fiatConversion": false
+      }
+    },
+    {
+      "index": 4,
+      "lnNode": "Supervision (Tier 1)",
+      "lnImplementation": "LND",
+      "authentication": {
+        "macaroonPath": "/RTL/macaroons"
+      },
+      "settings": {
+        "userPersona": "OPERATOR",
+        "themeMode": "DAY",
+        "themeColor": "PINK",
+        "channelBackupPath": "/RTL/lnd3-channel-backup",
+        "logLevel": "INFO",
+        "lnServerUrl": "https://regtest_lnd_tier1_supervision:8080",
+        "fiatConversion": false
+      }
+    },
+    {
+      "index": 5,
+      "lnNode": "Geodata (Tier 2)",
+      "lnImplementation": "LND",
+      "authentication": {
+        "macaroonPath": "/RTL/macaroons"
+      },
+      "settings": {
+        "userPersona": "OPERATOR",
+        "themeMode": "DAY",
+        "themeColor": "YELLOW",
+        "channelBackupPath": "/RTL/lnd4-channel-backup",
+        "logLevel": "INFO",
+        "lnServerUrl": "https://regtest_lnd_tier2_geodata:8080",
+        "fiatConversion": false
+      }
+    }
+  ],
+  "multiPassHashed": "09317fe22ca2985249d900071ed1e7bba89a9eb8120d31f66e7143957e44dbcf"
+}

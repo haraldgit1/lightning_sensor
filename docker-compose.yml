@@ -405,6 +405,29 @@ services:
       start_period: 60s
       start_interval: 3s
 
+  rtl:
+    image: shahanafarooqui/rtl:v0.15.4@sha256:f984095949b5b6c2c0c7d983e979cd34bd32a2952d106092bad0b46e6248168e
+    restart: unless-stopped
+    depends_on:
+      lnd_tier0_geodata:
+        condition: service_healthy
+      lnd_tier1_company:
+        condition: service_healthy
+      lnd_tier1_project_owner:
+        condition: service_healthy
+      lnd_tier1_supervision:
+        condition: service_healthy
+      lnd_tier2_geodata:
+        condition: service_healthy
+    environment:
+      - PORT=3000
+      - MACAROON_PATH=/RTL/macaroons/
+    ports:
+      - "13000:3000"
+    volumes:
+      - ./data/rtl/RTL-Config.json:/RTL/RTL-Config.json
+      - ./data/lnd_common/macaroons/admin.macaroon:/RTL/macaroons/admin.macaroon
+
 volumes:
   bitcoind-data:
   postgres-data:

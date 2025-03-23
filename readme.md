@@ -25,6 +25,11 @@ just listchannels # print channel info
 just clean
 ```
 
+#### UI
+
+"Ride The Lightning" is reachable on http://localhost:13000 with password "rtl".
+
+
 ### Channels
 ```mermaid
 flowchart TB
